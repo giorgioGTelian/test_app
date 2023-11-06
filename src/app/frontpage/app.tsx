@@ -43,19 +43,23 @@ enum UserStatus {
     formatSegment: (segment: number) => string;
   }
   
+ 
   const T: ITimeUtility = {
-    format: (date: any): string => {
-      const hours: string = T.formatHours(date.getHours()),
-            minutes: any = date.getMinutes(),
-            seconds: string = date.getSeconds();
+    format: (date: Date): string => {
+      const hours: number = date.getHours();
+      const minutes: number = date.getMinutes();
+      const seconds: number = date.getSeconds();
       
-      return `${hours}:${T.formatSegment(minutes)}`;
+      return `${T.formatHours(hours)}:${T.formatSegment(minutes)}:${T.formatSegment(seconds)}`;
     },
-    formatHours: (hours: any): string => {
-      return hours % 12 === 0 ? 12 : hours % 12;
+    formatHours: (hours: number): string => {
+      const isPM: boolean = hours >= 12;
+      const formattedHours: number = hours % 12 || 12;
+      
+      return `${formattedHours}${isPM ? "PM" : "AM"}`;
     },
     formatSegment: (segment: number): string => {
-      return segment < 10 ? `0${segment}` : segment;
+      return `${segment < 10 ? "0" : ""}${segment}`;
     }
   }
   
@@ -107,7 +111,7 @@ enum UserStatus {
   }
   
   const ScrollableComponent: React.FC<IScrollableComponentProps> = (props: IScrollableComponentProps) => {
-    const ref: React.MutableRefObject<HTMLDivElement> = React.useRef<HTMLDivElement>(null);
+    const ref = React.useRef<HTMLDivElement>(null);
     
     const [state, setStateTo] = React.useState<IScrollableComponentState>({
       grabbing: false,
@@ -119,8 +123,8 @@ enum UserStatus {
         ...state,
         grabbing: true,
         position: {
-          x: e.clientX,
-          left: ref.current.scrollLeft
+          ...state.position,
+          x: e.clientX
         }
       });
     }
@@ -129,7 +133,14 @@ enum UserStatus {
       if(state.grabbing) {
         const left: number = Math.max(0, state.position.left + (state.position.x - e.clientX));
         
-        ref.current.scrollLeft = left;
+        setStateTo({
+          ...state,
+          position: {
+            ...state.position,
+            left,
+            x: e.clientX
+          }
+        });
       }
     }
     
@@ -142,7 +153,6 @@ enum UserStatus {
     return (
       <div 
         ref={ref} 
-        className={classNames("scrollable-component", props.className)}
         id={props.id}
         onMouseDown={handleOnMouseDown}
         onMouseMove={handleOnMouseMove}
@@ -159,7 +169,7 @@ enum UserStatus {
     
     return(
       <span className="weather">
-        <i className="weather-type" className="fa-duotone fa-sun" />
+        <i className="weather-type"/>
         <span className="weather-temperature-value">{temperature}</span>
         <span className="weather-temperature-unit">°F</span>
       </span>
@@ -207,113 +217,29 @@ enum UserStatus {
     const [hidden, setHiddenTo] = React.useState<boolean>(false);
     
     React.useEffect(() => {
-      if(props.value) {
-        const timeout: NodeJS.Interval = setTimeout(() => {
+      if(props.focused) {
+        setHiddenTo(false);
+      } else {
+        const timeout: NodeJS.Timeout = setTimeout(() => {
           setHiddenTo(true);
-        }, 500);
-  
-        return () => {
-          setHiddenTo(false);
-          
-          clearTimeout(timeout);
-        }
+        }, 1000);
+        
+        return () => clearTimeout(timeout);
       }
-    }, [props.value]);
+    }, [props.focused]);
     
     return (
-      <div className={classNames("app-pin-digit", { focused: props.focused, hidden })}>
+      <div>
         <span className="app-pin-digit-value">{props.value || ""}</span>
       </div>
     ) 
   }
   
-  const Pin: React.FC = () => {
-    const { userStatus, setUserStatusTo } = React.useContext(AppContext);
-    
-    const [pin, setPinTo] = React.useState<string>("");
-    
-    const ref: React.MutableRefObject<HTMLInputElement> = React.useRef<HTMLInputElement>(null);
-    
-    React.useEffect(() => {
-      if(userStatus === UserStatus.LoggingIn || userStatus === UserStatus.LogInError) {
-        ref.current.focus();
-      } else {
-        setPinTo("");
-      }
-    }, [userStatus]);
-    
-    React.useEffect(() => {
-      if(pin.length === 4) {
-        const verify = async (): Promise<void> => {
-          try {
-            setUserStatusTo(UserStatus.VerifyingLogIn);
-            
-            if(await LogInUtility.verify(pin)) {          
-              setUserStatusTo(UserStatus.LoggedIn);
-            }
-          } catch (err) {
-            console.error(err);
-            
-            setUserStatusTo(UserStatus.LogInError);
-          }
-        }
-        
-        verify();
-      }
+
       
-      if(userStatus === UserStatus.LogInError) {
-        setUserStatusTo(UserStatus.LoggingIn);
-      }
-    }, [pin]);
-    
-    const handleOnClick = (): void => {
-      ref.current.focus();
-    }
-    
-    const handleOnCancel = (): void => {
-      setUserStatusTo(UserStatus.LoggedOut);
-    }
-    
-    const handleOnChange = (e: any): void => {
-      if(e.target.value.length <= 4) {
-        setPinTo(e.target.value.toString());
-      }
-    }
-    
-    const getCancelText = (): JSX.Element => {
-      return (
-        <span id="app-pin-cancel-text" onClick={handleOnCancel}>Cancel</span>
-      )
-    }
-    
-    const getErrorText = (): JSX.Element => {
-      if(userStatus === UserStatus.LogInError) {
-        return (
-          <span id="app-pin-error-text">Invalid</span>
-        )
-      }
-    }
-    
-    return(
-      <div id="app-pin-wrapper">
-        <input 
-          disabled={userStatus !== UserStatus.LoggingIn && userStatus !== UserStatus.LogInError}
-          id="app-pin-hidden-input" 
-          maxLength={4} 
-          ref={ref}
-          type="number" 
-          value={pin} 
-          onChange={handleOnChange} 
-        />
-        <div id="app-pin" onClick={handleOnClick}>
-          <PinDigit focused={pin.length === 0} value={pin[0]} />
-          <PinDigit focused={pin.length === 1} value={pin[1]} />
-          <PinDigit focused={pin.length === 2} value={pin[2]} />
-          <PinDigit focused={pin.length === 3} value={pin[3]} />
-        </div>
-        <h3 id="app-pin-label">Enter PIN (1234) {getErrorText()} {getCancelText()}</h3>
-      </div>
-    )
+      
+  interface IPinProps {
+    id?: string;
   }
   
   interface IMenuSectionProps {
@@ -430,6 +356,8 @@ enum UserStatus {
               return "fa-duotone fa-cloud-bolt";
             case WeatherType.Sunny:
               return "fa-duotone fa-sun";
+            default:
+              return "fa-duotone fa-question"; // or any other default icon
           }
         }
         
@@ -437,7 +365,7 @@ enum UserStatus {
           <div key={day.id} className="day-card">
             <div className="day-card-content">
               <span className="day-weather-temperature">{day.temperature}<span className="day-weather-temperature-unit">°F</span></span>
-              <i className={classNames("day-weather-icon", getIcon(), day.weather.toLowerCase())} />
+              <i/>
               <span className="day-name">{day.name}</span>  
             </div>  
           </div>
@@ -502,7 +430,7 @@ enum UserStatus {
                 <span className="tool-card-label">{tool.label}</span>
                 <span className="tool-card-name">{tool.name}</span>
               </div>
-              <i className={classNames(tool.icon, "tool-card-icon")} />
+              <i/>
             </div>
           </div>
         );
@@ -650,7 +578,7 @@ enum UserStatus {
           <div id="app-menu-content">
             <div id="app-menu-content-header">
               <div className="app-menu-content-header-section">
-                <Info id="app-menu-info" />
+                <Info />
                 <Reminder />
               </div>
               <div className="app-menu-content-header-section">
@@ -705,7 +633,7 @@ enum UserStatus {
     setUserStatusTo: (status: UserStatus) => void;
   }
   
-  const AppContext = React.createContext<IAppContext>(null);
+  const AppContext = React.createContext<IAppContext>({} as IAppContext);
   
   const App: React.FC = () => {
     const [userStatus, setUserStatusTo] = React.useState<UserStatus>(UserStatus.LoggedOut);
@@ -717,8 +645,8 @@ enum UserStatus {
     return(
       <AppContext.Provider value={{ userStatus, setUserStatusTo }}>
         <div id="app" className={getStatusClass()}>
-          <Info id="app-info" />
-          <Pin />
+          <Info />
+          
           <Menu />
           <Background />   
           <div id="sign-in-button-wrapper">

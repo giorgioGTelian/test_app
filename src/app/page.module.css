@@ -6,6 +6,24 @@
   padding: 6rem;
   min-height: 100vh;
 }
+.testbutton {
+  background-color: #4CAF50; /* Green background */
+  border: none; /* No border */
+  color: white; /* White text */
+  padding: 15px 32px; /* Top and bottom padding, Left and right padding */
+  text-align: center; /* Centered text */
+  text-decoration: none; /* No underline */
+  display: inline-block; /* Inline block element */
+  font-size: 16px; /* Font size */
+  margin: 4px 2px; /* Margin around the button */
+  cursor: pointer; /* Pointer/hand icon when hovering over the button */
+  border-radius: 4px; /* Rounded corners */
+  transition-duration: 0.4s; /* Time for the hover effect to take place */
+}
+
+#speed-test-button:hover {
+  background-color: #45a049; /* Darker shade of green when hovering */
+}
 
 .description {
   display: inherit;

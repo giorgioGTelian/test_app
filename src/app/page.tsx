@@ -6,7 +6,15 @@ export default function Home() {
     <main className={styles.main}>
       <div className={styles.description}>
         <div>
-          <button id="speed-test-button">Test Speed</button>
+        <button id="speed-test-button" 
+        className={styles.testbutton}
+        onClick={() => {
+          const startTime = performance.now();
+          console.log('Button clicked!');
+          const endTime = performance.now();
+          const responseTime = endTime - startTime;
+          console.log(`Button response time: ${responseTime} ms`);
+          }}>Test Speed</button>
         </div>
         <div>
           <a
